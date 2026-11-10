@@ -1,0 +1,699 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cotizador Multimodular de Cocinas v4</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
+        .fade-in { animation: fadeIn 0.3s ease-in-out; }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        /* Texturas para el render 2D */
+        .wood-pattern {
+            background-color: #e6c280;
+            background-image: repeating-linear-gradient(45deg, transparent, transparent 15px, rgba(0,0,0,0.03) 15px, rgba(0,0,0,0.03) 30px);
+            box-shadow: inset 0 0 10px rgba(0,0,0,0.05);
+        }
+        .wood-base { background-color: #3f2a1d; } 
+        
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    </style>
+</head>
+<body class="text-slate-800">
+
+    <!-- Header -->
+    <header class="bg-slate-900 text-white shadow-md sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex flex-col sm:flex-row justify-between items-center gap-4">
+            <div>
+                <h1 class="text-2xl font-extrabold tracking-tight flex items-center gap-2">
+                    <svg class="w-6 h-6 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+                    Optimizador Multi-Modular v4
+                </h1>
+                <p class="text-slate-400 text-sm mt-1">Diseña, edita y gestiona múltiples módulos con holguras exactas.</p>
+            </div>
+            <div class="bg-slate-800 p-1.5 rounded-lg flex items-center gap-2 border border-slate-700">
+                <label class="text-xs font-semibold text-slate-300 ml-2 uppercase tracking-wide">Unidad:</label>
+                <select id="unidad" onchange="cambioUnidad()" class="bg-slate-700 text-white border-none rounded px-3 py-1.5 text-sm font-medium outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer">
+                    <option value="mm" selected>Milímetros (mm)</option>
+                    <option value="cm">Centímetros (cm)</option>
+                    <option value="in">Pulgadas (in)</option>
+                </select>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+        
+        <!-- Alerta de Errores -->
+        <div id="alertBox" class="hidden bg-red-50 border-l-4 border-red-500 p-4 rounded-r-lg shadow-sm fade-in flex items-start gap-3">
+            <svg class="w-6 h-6 text-red-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+            <div>
+                <h3 class="text-red-800 font-bold">Error de Cálculo</h3>
+                <p id="alertMessage" class="text-red-600 text-sm mt-1">Revisa las medidas ingresadas.</p>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            
+            <!-- FORMULARIO DE CONFIGURACIÓN -->
+            <div class="lg:col-span-7 space-y-5">
+                
+                <!-- 1. Dimensiones -->
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                    <div class="bg-slate-50 px-5 py-3 border-b border-slate-200 flex justify-between items-center">
+                        <h2 class="font-semibold text-slate-800 text-sm uppercase tracking-wide" id="tituloConfiguracion">1. Configurar Nuevo Módulo</h2>
+                        <button id="btnCancelarEdicion" onclick="cancelarEdicion()" class="hidden text-xs bg-slate-200 hover:bg-slate-300 text-slate-700 px-3 py-1 rounded font-medium transition-colors">Cancelar Edición</button>
+                    </div>
+                    <div class="p-5 grid grid-cols-2 md:grid-cols-3 gap-4">
+                        <div>
+                            <label class="block text-xs font-medium text-slate-500 mb-1">Alto Total</label>
+                            <input type="number" id="altoTotal" value="900" step="any" class="w-full px-3 py-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-blue-500 outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-slate-500 mb-1">Ancho Total</label>
+                            <input type="number" id="anchoTotal" value="600" step="any" class="w-full px-3 py-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-blue-500 outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-slate-500 mb-1">Fondo de Caja</label>
+                            <input type="number" id="fondoTotal" value="580" step="any" class="w-full px-3 py-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-blue-500 outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-slate-500 mb-1">Banquetón/Zócalo</label>
+                            <input type="number" id="banqueton" value="150" step="any" class="w-full px-3 py-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-blue-500 outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-slate-500 mb-1">Grosor Cubierta</label>
+                            <input type="number" id="grosorCubierta" value="20" step="any" class="w-full px-3 py-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-blue-500 outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-slate-500 mb-1">Opciones de Fondo Trasero</label>
+                            <select id="tipoFondo" class="w-full px-3 py-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-blue-500 outline-none bg-white text-sm">
+                                <option value="largueros">Tiras / Amarres de 10 cm (15mm)</option>
+                                <option value="delgado">Fondo Delgado (3mm/6mm)</option>
+                                <option value="macizo">Fondo Completo Macizo (15mm)</option>
+                                <option value="ninguno">Sin fondo</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2. Frentes -->
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                    <div class="bg-slate-50 px-5 py-3 border-b border-slate-200 flex justify-between items-center">
+                        <h2 class="font-semibold text-slate-800 text-sm uppercase tracking-wide">2. Diseño Interno y Frentes</h2>
+                        <span class="text-xs bg-slate-200 text-slate-600 px-2 py-1 rounded font-medium">Holgura: 2.5mm</span>
+                    </div>
+                    <div class="p-5 grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label class="block text-sm font-bold text-slate-700 mb-2">Cajones (1 par correderas c/u)</label>
+                            <input type="number" id="cajones" value="1" min="0" oninput="generarInputsCajones()" class="w-full px-3 py-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-indigo-500 outline-none mb-3">
+                            <div id="cajonesContainer" class="space-y-2 pl-3 border-l-2 border-indigo-100">
+                                <!-- Inputs dinámicos -->
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-bold text-slate-700 mb-2">Puertas (2 bisagras c/u)</label>
+                            <input type="number" id="puertas" value="2" min="0" class="w-full px-3 py-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-indigo-500 outline-none">
+                            <p class="text-xs text-slate-500 mt-2 leading-relaxed">El alto de las puertas es automático. Se calcula restando los cajones y las holguras (2.5mm por borde) al espacio total.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3. Finanzas -->
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                    <div class="bg-slate-50 px-5 py-3 border-b border-slate-200">
+                        <h2 class="font-semibold text-slate-800 text-sm uppercase tracking-wide">3. Precios Base y Utilidad ($)</h2>
+                    </div>
+                    <div class="p-5 grid grid-cols-2 md:grid-cols-3 gap-4">
+                        <div>
+                            <label class="block text-xs font-medium text-slate-500 mb-1">Hoja 15mm</label>
+                            <input type="number" id="precioHoja15" value="1450" class="w-full px-3 py-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-emerald-500 outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-slate-500 mb-1">Hoja Fondo (3mm/6mm)</label>
+                            <input type="number" id="precioHoja3" value="350" class="w-full px-3 py-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-emerald-500 outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-slate-500 mb-1">Canto (ml)</label>
+                            <input type="number" id="precioCanto" value="12" class="w-full px-3 py-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-emerald-500 outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-slate-500 mb-1">Bisagra (U)</label>
+                            <input type="number" id="precioBisagra" value="25" class="w-full px-3 py-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-emerald-500 outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-slate-500 mb-1">Corredera (Par)</label>
+                            <input type="number" id="precioCorredera" value="85" class="w-full px-3 py-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-emerald-500 outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">Utilidad</label>
+                            <select id="margenUtilidad" class="w-full px-3 py-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-emerald-500 outline-none bg-emerald-50 text-emerald-900 font-semibold">
+                                <option value="10">10%</option>
+                                <option value="20">20%</option>
+                                <option value="30" selected>30% - Estándar</option>
+                                <option value="40">40%</option>
+                                <option value="50">50%</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex gap-4">
+                    <button onclick="calcularYPrevisualizar()" class="w-1/2 bg-slate-800 hover:bg-slate-900 text-white font-bold py-4 rounded-xl shadow-md transition-colors flex items-center justify-center gap-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+                        Previsualizar
+                    </button>
+                    <button id="btnAccionPrincipal" onclick="guardarModulo()" class="w-1/2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-4 rounded-xl shadow-md transition-colors flex items-center justify-center gap-2 opacity-50 cursor-not-allowed" disabled>
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                        <span id="textoBtnAccion">Agregar al Proyecto</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- VISTA PREVIA Y RESUMEN -->
+            <div class="lg:col-span-5 flex flex-col gap-5">
+                
+                <!-- Render 2D -->
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden flex-grow flex flex-col min-h-[400px]">
+                    <div class="bg-slate-50 px-5 py-3 border-b border-slate-200 flex justify-between items-center">
+                        <h2 class="font-semibold text-slate-800 text-sm uppercase tracking-wide">Render 2D Frontal</h2>
+                        <span class="text-xs text-slate-500" id="labelEscala">Esperando cálculo...</span>
+                    </div>
+                    <div class="flex-grow p-6 flex justify-center items-center bg-white relative" id="graficoContainer">
+                        <div class="text-center text-slate-400">
+                            <svg class="w-12 h-12 mx-auto mb-2 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                            <p class="text-sm">Configura y presiona "Previsualizar".</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Resumen Módulo Actual -->
+                <div id="resumenModuloContainer" class="hidden fade-in bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                    <div class="p-5">
+                        <div class="flex justify-between items-end mb-4">
+                            <div>
+                                <p class="text-xs text-slate-500 uppercase tracking-wider font-bold">Costo Producción</p>
+                                <p class="text-lg font-semibold text-slate-700" id="modCostoProd">$0.00</p>
+                            </div>
+                            <div class="text-right">
+                                <p class="text-xs text-emerald-600 uppercase tracking-wider font-bold mb-0.5">Precio Venta Sugerido</p>
+                                <p class="text-3xl font-black text-emerald-700 leading-none" id="modPrecioVenta">$0.00</p>
+                            </div>
+                        </div>
+                        
+                        <div class="grid grid-cols-2 gap-2 text-sm text-slate-600 bg-slate-50 p-3 rounded-lg border border-slate-100">
+                            <div><span class="font-medium text-slate-800" id="modMaderaM2">0</span> m&sup2; (15mm)</div>
+                            <div><span class="font-medium text-slate-800" id="modCantoMl">0</span> ml Canto</div>
+                            <div id="modFondoDelgadoContainer" class="col-span-2 hidden"><span class="font-medium text-slate-800" id="modFondoM2">0</span> m&sup2; (Fondo Delgado 3mm)</div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- SECCIÓN INFERIOR: CARRITO / PROYECTO MULTIMODULAR -->
+        <div class="bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden mt-10">
+            <div class="bg-slate-900 px-6 py-4 flex flex-col sm:flex-row justify-between items-center gap-3">
+                <h2 class="text-xl font-bold text-white flex items-center gap-2">
+                    <svg class="w-6 h-6 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+                    Resumen del Proyecto
+                </h2>
+                <span class="bg-slate-800 text-slate-300 text-xs px-3 py-1 rounded-full font-medium border border-slate-700" id="badgeModulos">0 Módulos</span>
+            </div>
+            
+            <div class="p-6">
+                <!-- Lista de módulos -->
+                <div id="listaModulos" class="space-y-3 max-h-[400px] overflow-y-auto custom-scrollbar pr-2 mb-6">
+                    <div class="text-center py-10 text-slate-400 border-2 border-dashed border-slate-200 rounded-xl">
+                        Aún no has agregado módulos al proyecto.
+                    </div>
+                </div>
+
+                <!-- Totales Acumulados -->
+                <div class="border-t-2 border-slate-100 pt-6">
+                    <h3 class="text-sm font-bold text-slate-400 uppercase tracking-wider mb-4">Totales Acumulados del Proyecto</h3>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        
+                        <!-- Materiales -->
+                        <div class="bg-slate-50 p-4 rounded-xl border border-slate-100 space-y-2">
+                            <div class="flex justify-between text-sm">
+                                <span class="text-slate-500">Madera 15mm (+10% merma):</span>
+                                <span class="font-bold text-slate-800" id="totM2_15">0.00 m&sup2;</span>
+                            </div>
+                            <div class="flex justify-between text-sm">
+                                <span class="text-slate-500">Fondo Delgado:</span>
+                                <span class="font-bold text-slate-800" id="totM2_3">0.00 m&sup2;</span>
+                            </div>
+                            <div class="flex justify-between text-sm border-t border-slate-200 pt-1 mt-1">
+                                <span class="text-slate-500">Cubrecanto:</span>
+                                <span class="font-bold text-slate-800" id="totCanto">0.00 ml</span>
+                            </div>
+                            <div class="flex justify-between text-sm">
+                                <span class="text-slate-500">Herrajes:</span>
+                                <span class="font-bold text-slate-800" id="totHerrajes">0 Bis., 0 Corr.</span>
+                            </div>
+                        </div>
+
+                        <!-- Producción -->
+                        <div class="bg-slate-50 p-4 rounded-xl border border-slate-100 flex flex-col justify-center">
+                            <span class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Inversión Taller (Costo)</span>
+                            <span class="text-3xl font-bold text-slate-700" id="totCostoProd">$0.00</span>
+                        </div>
+
+                        <!-- Venta -->
+                        <div class="bg-emerald-50 p-4 rounded-xl border border-emerald-200 flex flex-col justify-center relative overflow-hidden">
+                            <span class="text-xs font-bold text-emerald-700 uppercase tracking-wider mb-1 relative z-10">Precio Venta Cliente</span>
+                            <span class="text-4xl font-black text-emerald-900 tracking-tight relative z-10" id="totPrecioVenta">$0.00</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <script>
+        // Utilidades y Constantes
+        const formatoMoneda = new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' });
+        const GROSOR_TABLERO = 15;
+        const HOLGURA = 2.5; // mm de descuento por lado
+        const fConv = { 'mm': 1, 'cm': 10, 'in': 25.4 };
+        
+        // ESTADO GLOBAL
+        let modulosProyecto = [];
+        let moduloActualTemporal = null; 
+        let contadorID = 1;
+        let editandoIndex = -1; // -1 significa nuevo módulo
+
+        // -----------------------------------------------------
+        // 1. MANEJO DE UI: INPUTS DINÁMICOS Y UNIDADES
+        // -----------------------------------------------------
+        function generarInputsCajones(valoresPrevios = []) {
+            const cant = parseInt(document.getElementById('cajones').value) || 0;
+            const container = document.getElementById('cajonesContainer');
+            const u = document.getElementById('unidad').value;
+            let valDefecto = u === 'cm' ? 15 : (u === 'in' ? 6 : 150);
+            
+            let html = '';
+            for(let i = 0; i < cant; i++) {
+                // Usar valor previo si existe (al editar o cambiar unidad), si no, usar defecto.
+                let val = valoresPrevios[i] !== undefined ? valoresPrevios[i] : valDefecto;
+                html += `
+                    <div class="flex items-center gap-2 mb-1 fade-in">
+                        <label class="text-xs text-slate-600 w-16">Frente ${i+1}:</label>
+                        <input type="number" class="cajon-altura w-full px-2 py-1.5 text-sm border border-slate-300 rounded focus:ring-1 focus:ring-indigo-500 outline-none" value="${val}" step="any">
+                        <span class="text-xs text-slate-400 font-mono w-6">${u}</span>
+                    </div>
+                `;
+            }
+            container.innerHTML = html;
+            bloquearBotonGuardar(); // Al cambiar la estructura, hay que volver a previsualizar
+        }
+
+        function cambioUnidad() {
+            // Recolectar valores actuales de cajones antes de regenerarlos para intentar mantener proporciones o resetearlos
+            generarInputsCajones(); 
+            bloquearBotonGuardar();
+        }
+
+        // Inicializar al cargar
+        generarInputsCajones();
+
+        function mostrarError(msj) {
+            document.getElementById('alertMessage').innerText = msj;
+            document.getElementById('alertBox').classList.remove('hidden');
+            document.getElementById('resumenModuloContainer').classList.add('hidden');
+            document.getElementById('graficoContainer').innerHTML = '<p class="text-red-400 text-sm text-center font-medium">Error de cálculo. Renderizado cancelado.</p>';
+            bloquearBotonGuardar();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function ocultarError() {
+            document.getElementById('alertBox').classList.add('hidden');
+        }
+
+        function bloquearBotonGuardar() {
+            const btn = document.getElementById('btnAccionPrincipal');
+            btn.disabled = true;
+            btn.classList.add('opacity-50', 'cursor-not-allowed');
+            btn.classList.remove('hover:bg-emerald-700');
+            moduloActualTemporal = null;
+        }
+
+        function habilitarBotonGuardar() {
+            const btn = document.getElementById('btnAccionPrincipal');
+            btn.disabled = false;
+            btn.classList.remove('opacity-50', 'cursor-not-allowed');
+            btn.classList.add('hover:bg-emerald-700');
+        }
+
+        // -----------------------------------------------------
+        // 2. MOTOR DE CÁLCULO
+        // -----------------------------------------------------
+        function calcularYPrevisualizar() {
+            ocultarError();
+            
+            const u = document.getElementById('unidad').value;
+            const f = fConv[u];
+
+            // Medidas a mm
+            const rawInputs = {
+                altoTotal: parseFloat(document.getElementById('altoTotal').value) || 0,
+                banqueton: parseFloat(document.getElementById('banqueton').value) || 0,
+                cubierta: parseFloat(document.getElementById('grosorCubierta').value) || 0,
+                ancho: parseFloat(document.getElementById('anchoTotal').value) || 0,
+                fondo: parseFloat(document.getElementById('fondoTotal').value) || 0,
+                tipoFondo: document.getElementById('tipoFondo').value,
+                cantPuertas: parseInt(document.getElementById('puertas').value) || 0,
+                cantCajones: parseInt(document.getElementById('cajones').value) || 0,
+            };
+
+            const altoTotal = rawInputs.altoTotal * f;
+            const banqueton = rawInputs.banqueton * f;
+            const cubierta = rawInputs.cubierta * f;
+            const ancho = rawInputs.ancho * f;
+            const fondo = rawInputs.fondo * f;
+            const tipoFondo = rawInputs.tipoFondo;
+
+            // Alturas de cajones
+            const inputsAlturaCajon = document.querySelectorAll('.cajon-altura');
+            let alturasCajonesMm = [];
+            let alturasCajonesRaw = []; // Para guardarlos en la unidad original para la edición
+            let sumaAlturasCajones = 0;
+            
+            inputsAlturaCajon.forEach(inp => {
+                let v = parseFloat(inp.value) || 0;
+                alturasCajonesRaw.push(v);
+                let h = v * f;
+                alturasCajonesMm.push(h);
+                sumaAlturasCajones += h;
+            });
+
+            // Matemáticas Estructurales
+            const altoCaja = altoTotal - banqueton - cubierta;
+            const anchoInterno = ancho - (GROSOR_TABLERO * 2);
+
+            if (altoCaja <= 0 || anchoInterno <= 0) {
+                return mostrarError("Las medidas restadas (Zócalo/Cubierta) superan las dimensiones totales del mueble.");
+            }
+
+            // Frentes y Holguras
+            const anchoFrente = ancho - (HOLGURA * 2);
+            const separacionesHorizontales = rawInputs.cantCajones + (rawInputs.cantPuertas > 0 ? 1 : 0) + (rawInputs.cantCajones === 0 && rawInputs.cantPuertas === 0 ? -1 : 1);
+            const holguraVerticalTotal = separacionesHorizontales > 0 ? (separacionesHorizontales * HOLGURA) : 0;
+            
+            let altoPuerta = 0;
+            let anchoPuerta = 0;
+
+            if (rawInputs.cantPuertas > 0) {
+                altoPuerta = altoCaja - sumaAlturasCajones - holguraVerticalTotal;
+                const holgurasVerticalesPuertas = (rawInputs.cantPuertas + 1) * HOLGURA; // Holguras entre puertas y los lados
+                anchoPuerta = (ancho - holgurasVerticalesPuertas) / rawInputs.cantPuertas;
+
+                if (altoPuerta <= 0) {
+                    return mostrarError(`Los cajones superan el alto de la caja. Alto caja: ${(altoCaja/f).toFixed(1)}${u}.`);
+                }
+            }
+
+            // Consumos de Material
+            // Base 15mm: 2 lados, 1 base, 2 amarres
+            let areaCaja15mm = (2 * altoCaja * fondo) + (anchoInterno * fondo) + (2 * anchoInterno * 100);
+            let areaFondo3mm = 0;
+
+            // Lógica de Fondos
+            if (tipoFondo === 'largueros') {
+                areaCaja15mm += (2 * anchoInterno * 100);
+            } else if (tipoFondo === 'delgado') {
+                areaFondo3mm = altoCaja * ancho;
+            } else if (tipoFondo === 'macizo') {
+                areaCaja15mm += altoCaja * ancho;
+            }
+            
+            let areaFrentes15mm = 0;
+            alturasCajonesMm.forEach(h => { areaFrentes15mm += (h * anchoFrente); });
+            areaFrentes15mm += (rawInputs.cantPuertas * anchoPuerta * altoPuerta);
+            
+            const totalM2_15 = (areaCaja15mm + areaFrentes15mm) / 1000000;
+            const totalM2_3 = areaFondo3mm / 1000000;
+
+            // Cubrecanto
+            const cantoCaja = (2 * altoCaja) + (2 * anchoInterno); // Frentes de la estructura
+            let cantoFrentes = 0;
+            alturasCajonesMm.forEach(h => { cantoFrentes += (2 * h) + (2 * anchoFrente); });
+            cantoFrentes += rawInputs.cantPuertas * (2 * altoPuerta + 2 * anchoPuerta);
+            const totalCanto = (cantoCaja + cantoFrentes) / 1000;
+
+            // Herrajes
+            const totalBisagras = rawInputs.cantPuertas * 2;
+            const totalCorrederas = rawInputs.cantCajones;
+
+            // Finanzas
+            const p = {
+                hoja15: parseFloat(document.getElementById('precioHoja15').value) || 0,
+                hoja3: parseFloat(document.getElementById('precioHoja3').value) || 0,
+                canto: parseFloat(document.getElementById('precioCanto').value) || 0,
+                bisagra: parseFloat(document.getElementById('precioBisagra').value) || 0,
+                corredera: parseFloat(document.getElementById('precioCorredera').value) || 0,
+                margen: parseFloat(document.getElementById('margenUtilidad').value) || 0
+            };
+
+            const costo15mm = (totalM2_15 / 2.97) * p.hoja15 * 1.10; // 10% Merma
+            const costo3mm = totalM2_3 > 0 ? ((totalM2_3 / 2.97) * p.hoja3 * 1.10) : 0;
+            const costoCantoFinal = totalCanto * p.canto;
+            const costoHerrajes = (totalBisagras * p.bisagra) + (totalCorrederas * p.corredera);
+            
+            const costoProduccion = costo15mm + costo3mm + costoCantoFinal + costoHerrajes;
+            const precioVenta = costoProduccion * (1 + (p.margen / 100));
+
+            // Guardar Estado Temporal
+            moduloActualTemporal = {
+                // Info para Lista
+                nombre: editandoIndex === -1 ? `Módulo ${contadorID}` : modulosProyecto[editandoIndex].nombre,
+                config: `${rawInputs.cantPuertas} Puerta(s), ${rawInputs.cantCajones} Cajón(es)`,
+                dimensionesStr: `${rawInputs.ancho.toFixed(1)} x ${rawInputs.altoTotal.toFixed(1)} x ${rawInputs.fondo.toFixed(1)} ${u}`,
+                
+                // Totales Acumulables
+                m2_15: totalM2_15,
+                m2_3: totalM2_3,
+                canto: totalCanto,
+                bisagras: totalBisagras,
+                correderas: totalCorrederas,
+                costoProd: costoProduccion,
+                precioVenta: precioVenta,
+                
+                // Datos para Restaurar Edición
+                raw: { ...rawInputs, u: u, alturasCajones: alturasCajonesRaw },
+                
+                // Datos Render
+                r_altoTotal: altoTotal, r_ancho: ancho, r_cubierta: cubierta, r_banqueton: banqueton,
+                r_altoCaja: altoCaja, r_cantPuertas: rawInputs.cantPuertas, r_alturasCajonesMm: alturasCajonesMm
+            };
+
+            actualizarVistaModuloActual();
+            dibujarRender2D(moduloActualTemporal);
+            habilitarBotonGuardar();
+        }
+
+        function actualizarVistaModuloActual() {
+            const m = moduloActualTemporal;
+            document.getElementById('modCostoProd').innerText = formatoMoneda.format(m.costoProd);
+            document.getElementById('modPrecioVenta').innerText = formatoMoneda.format(m.precioVenta);
+            document.getElementById('modMaderaM2').innerText = m.m2_15.toFixed(2);
+            document.getElementById('modCantoMl').innerText = m.canto.toFixed(2);
+            
+            if(m.m2_3 > 0) {
+                document.getElementById('modFondoM2').innerText = m.m2_3.toFixed(2);
+                document.getElementById('modFondoDelgadoContainer').classList.remove('hidden');
+            } else {
+                document.getElementById('modFondoDelgadoContainer').classList.add('hidden');
+            }
+            document.getElementById('resumenModuloContainer').classList.remove('hidden');
+        }
+
+        function dibujarRender2D(m) {
+            const container = document.getElementById('graficoContainer');
+            const maxPxHeight = 360;
+            const scale = maxPxHeight / m.r_altoTotal;
+            document.getElementById('labelEscala').innerText = `Escala: 1px = ${(1/scale).toFixed(2)}mm`;
+
+            let frentesRenderHtml = '';
+            
+            m.r_alturasCajonesMm.forEach(h => {
+                frentesRenderHtml += `<div class="wood-pattern rounded-sm shadow-sm relative overflow-hidden" style="width: 100%; height: ${h * scale}px; flex-shrink: 0; border: 1px solid rgba(0,0,0,0.15);"><div class="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-4 h-1 bg-slate-800/20 rounded"></div></div>`;
+            });
+            
+            if (m.r_cantPuertas > 0) {
+                frentesRenderHtml += `<div style="flex-grow: 1; display: flex; gap: ${HOLGURA * scale}px; width: 100%;">`;
+                for(let i=0; i < m.r_cantPuertas; i++) {
+                    frentesRenderHtml += `<div class="wood-pattern rounded-sm shadow-sm relative" style="flex: 1; height: 100%; border: 1px solid rgba(0,0,0,0.15);"><div class="absolute top-1/2 ${i%2===0 ? 'right-2' : 'left-2'} w-1 h-4 bg-slate-800/20 rounded"></div></div>`;
+                }
+                frentesRenderHtml += `</div>`;
+            }
+
+            const html = `
+                <div class="fade-in" style="width: ${m.r_ancho * scale}px; height: ${m.r_altoTotal * scale}px; display: flex; flex-direction: column; background: #fff; filter: drop-shadow(0 10px 8px rgb(0 0 0 / 0.04)); border-radius: 2px;">
+                    <!-- Cubierta -->
+                    <div style="width: 100%; height: ${m.r_cubierta * scale}px; background: #94a3b8; border-bottom: 2px solid #475569;"></div>
+                    
+                    <!-- Caja -->
+                    <div class="wood-base" style="width: 100%; height: ${m.r_altoCaja * scale}px; padding: ${HOLGURA * scale}px; display: flex; flex-direction: column; gap: ${HOLGURA * scale}px; overflow: hidden; position: relative;">
+                        <div style="position:absolute; top:0; left:0; bottom:0; width: ${GROSOR_TABLERO*scale}px; background: rgba(0,0,0,0.3);"></div>
+                        <div style="position:absolute; top:0; right:0; bottom:0; width: ${GROSOR_TABLERO*scale}px; background: rgba(0,0,0,0.3);"></div>
+                        ${frentesRenderHtml}
+                    </div>
+
+                    <!-- Zócalo -->
+                    <div style="width: 90%; height: ${m.r_banqueton * scale}px; background: #334155; margin: 0 auto; box-shadow: inset 0 4px 6px -1px rgba(0,0,0,0.3);"></div>
+                </div>
+            `;
+            container.innerHTML = html;
+        }
+
+        // -----------------------------------------------------
+        // 3. GESTIÓN DEL PROYECTO (CRUD Módulos)
+        // -----------------------------------------------------
+        function guardarModulo() {
+            if(!moduloActualTemporal) return;
+            
+            if(editandoIndex === -1) {
+                // AGREGAR NUEVO
+                modulosProyecto.push(JSON.parse(JSON.stringify(moduloActualTemporal)));
+                contadorID++;
+            } else {
+                // ACTUALIZAR EXISTENTE
+                modulosProyecto[editandoIndex] = JSON.parse(JSON.stringify(moduloActualTemporal));
+                cancelarEdicion(); // Reset UI
+            }
+            
+            bloquearBotonGuardar();
+            renderizarProyecto();
+            document.getElementById('listaModulos').scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+
+        function editarModulo(index) {
+            editandoIndex = index;
+            const m = modulosProyecto[index];
+            const r = m.raw;
+
+            // Cargar Unidad
+            document.getElementById('unidad').value = r.u;
+            
+            // Cargar Medidas
+            document.getElementById('altoTotal').value = r.altoTotal;
+            document.getElementById('banqueton').value = r.banqueton;
+            document.getElementById('grosorCubierta').value = r.cubierta;
+            document.getElementById('anchoTotal').value = r.ancho;
+            document.getElementById('fondoTotal').value = r.fondo;
+            document.getElementById('tipoFondo').value = r.tipoFondo;
+            
+            // Cargar Frentes
+            document.getElementById('puertas').value = r.cantPuertas;
+            document.getElementById('cajones').value = r.cantCajones;
+            
+            // Reconstruir Cajones Dinámicos con sus valores guardados
+            generarInputsCajones(r.alturasCajones);
+
+            // UI Changes
+            document.getElementById('tituloConfiguracion').innerText = `Editando: ${m.nombre}`;
+            document.getElementById('tituloConfiguracion').classList.add('text-blue-700');
+            document.getElementById('btnCancelarEdicion').classList.remove('hidden');
+            
+            const btn = document.getElementById('btnAccionPrincipal');
+            document.getElementById('textoBtnAccion').innerText = "Actualizar Módulo";
+            btn.classList.replace('bg-emerald-600', 'bg-blue-600');
+            btn.classList.replace('hover:bg-emerald-700', 'hover:bg-blue-700');
+            
+            // Automáticamente recalcular para ver la vista previa
+            calcularYPrevisualizar();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function cancelarEdicion() {
+            editandoIndex = -1;
+            document.getElementById('tituloConfiguracion').innerText = `1. Configurar Nuevo Módulo`;
+            document.getElementById('tituloConfiguracion').classList.remove('text-blue-700');
+            document.getElementById('btnCancelarEdicion').classList.add('hidden');
+            
+            const btn = document.getElementById('btnAccionPrincipal');
+            document.getElementById('textoBtnAccion').innerText = "Agregar al Proyecto";
+            btn.classList.replace('bg-blue-600', 'bg-emerald-600');
+            btn.classList.replace('hover:bg-blue-700', 'hover:bg-emerald-700');
+            
+            bloquearBotonGuardar();
+        }
+
+        function eliminarModulo(index) {
+            modulosProyecto.splice(index, 1);
+            if(editandoIndex === index) cancelarEdicion();
+            renderizarProyecto();
+        }
+
+        function renderizarProyecto() {
+            const container = document.getElementById('listaModulos');
+            document.getElementById('badgeModulos').innerText = `${modulosProyecto.length} Módulos`;
+
+            if(modulosProyecto.length === 0) {
+                container.innerHTML = `<div class="text-center py-10 text-slate-400 border-2 border-dashed border-slate-200 rounded-xl">No hay módulos en el proyecto.</div>`;
+                actualizarTotales(0,0,0,0,0,0,0);
+                return;
+            }
+
+            let html = '';
+            let t = { m15: 0, m3: 0, canto: 0, bis: 0, corr: 0, prod: 0, venta: 0 };
+
+            modulosProyecto.forEach((m, idx) => {
+                t.m15 += m.m2_15; t.m3 += m.m2_3; t.canto += m.canto; 
+                t.bis += m.bisagras; t.corr += m.correderas; 
+                t.prod += m.costoProd; t.venta += m.precioVenta;
+
+                const esEditando = (idx === editandoIndex);
+                html += `
+                    <div class="flex items-center justify-between bg-white border ${esEditando ? 'border-blue-400 shadow-md ring-1 ring-blue-400' : 'border-slate-200 hover:border-slate-300'} p-4 rounded-xl transition-all fade-in">
+                        <div class="flex-grow">
+                            <div class="flex items-center gap-2 mb-1">
+                                <span class="${esEditando ? 'bg-blue-600 text-white' : 'bg-slate-200 text-slate-700'} text-xs font-bold px-2 py-0.5 rounded">${m.nombre}</span>
+                                <span class="text-slate-500 text-xs">${m.dimensionesStr}</span>
+                            </div>
+                            <p class="text-sm text-slate-700 font-medium">${m.config}</p>
+                            <p class="text-xs text-slate-400 mt-1">Costo Prod: ${formatoMoneda.format(m.costoProd)}</p>
+                        </div>
+                        <div class="flex flex-col items-end gap-2 shrink-0 ml-4">
+                            <span class="font-bold text-emerald-700 text-lg leading-none mb-1">${formatoMoneda.format(m.precioVenta)}</span>
+                            <div class="flex gap-2">
+                                <button onclick="editarModulo(${idx})" class="text-blue-500 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 p-1.5 rounded transition-colors text-xs font-medium px-3 border border-blue-100">Editar</button>
+                                <button onclick="eliminarModulo(${idx})" class="text-red-400 hover:text-red-600 bg-red-50 hover:bg-red-100 p-1.5 rounded transition-colors" title="Eliminar">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+
+            container.innerHTML = html;
+            actualizarTotales(t.m15, t.m3, t.canto, t.bis, t.corr, t.prod, t.venta);
+        }
+
+        function actualizarTotales(m15, m3, canto, bis, corr, prod, venta) {
+            document.getElementById('totM2_15').innerText = `${m15.toFixed(2)} m\u00B2`;
+            document.getElementById('totM2_3').innerText = `${m3.toFixed(2)} m\u00B2`;
+            document.getElementById('totCanto').innerText = `${canto.toFixed(2)} ml`;
+            document.getElementById('totHerrajes').innerText = `${bis} Bis., ${corr} Corr.`;
+            document.getElementById('totCostoProd').innerText = formatoMoneda.format(prod);
+            document.getElementById('totPrecioVenta').innerText = formatoMoneda.format(venta);
+        }
+    </script>
+</body>
+</html>
